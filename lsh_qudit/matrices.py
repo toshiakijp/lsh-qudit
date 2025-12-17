@@ -1,5 +1,6 @@
 # pylint: disable=invalid-name, not-callable
 """Hamiltonian terms and corresponding unitaries represented in numpy matrices."""
+from collections.abc import Callable
 from functools import partial
 from numbers import Number
 import numpy as np
@@ -42,6 +43,24 @@ def _mass_hamiltonian(num_sites, mass_mu, npmod):
 
 
 _mass_hamiltonian_jit = jax.jit(partial(_mass_hamiltonian, npmod=jnp), static_argnums=[0])
+
+
+def mass_hamiltonian_op(
+    num_sites: int,
+    mass_mu: float
+) -> Callable[[jax.Array], jax.Array]:
+    @jax.jit
+    def op(state_tensor):
+        diag_op = jnp.zeros_like(state_tensor)
+        for site in range(num_sites):
+            fermi_op = np.array([1., -1.]) * (-1 + 2 * (site % 2)) * mass_mu / 2.
+            site_op = fermi_op[None, :, None] + fermi_op[None, None, :]
+            extra_dims = tuple(range(3 * (num_sites - site - 1)))
+            extra_dims += tuple(range(3 * (num_sites - site), 3 * num_sites))
+            diag_op += jnp.expand_dims(site_op, extra_dims)
+        return diag_op * state_tensor
+
+    return op
 
 
 def electric_12_site_hamiltonian(
@@ -161,6 +180,26 @@ _electric_3b_hamiltonian_jit = jax.jit(partial(_electric_3b_hamiltonian, npmod=j
                                        static_argnums=[0, 1, 2])
 
 
+def electric_hamiltonian_op(
+    num_sites: int
+) -> Callable[[jax.Array], jax.Array]:
+    @jax.jit
+    def op(state_tensor):
+        nl = np.arange(BOSON_TRUNC)
+        nf = np.arange(2)
+        site_op = np.zeros((3, 2, 2))
+        site_op += (nl * 0.5 + nl * nl * 0.25)[:, None, None]
+        site_op += 0.5 * (nl[:, None, None] + 1.5) * nf[None, :, None] * (1 - nf[None, None, :])
+        diag_op = jnp.zeros_like(state_tensor)
+        for site in range(num_sites - 1):
+            extra_dims = tuple(range(3 * (num_sites - site - 1)))
+            extra_dims += tuple(range(3 * (num_sites - site), 3 * num_sites))
+            diag_op += jnp.expand_dims(site_op, extra_dims)
+        return diag_op * state_tensor
+
+    return op
+
+
 def hopping_site_hamiltonian(
     term_type: int,
     interaction_x: Number,
@@ -243,6 +282,176 @@ _hopping_hamiltonian_jit = jax.jit(partial(_hopping_hamiltonian, npmod=jnp),
                                    static_argnums=[0, 1, 2, 4, 5])
 
 
+def hopping1_hamiltonian_op(
+    num_sites: int,
+    interaction_x: float
+) -> Callable[[jax.Array], jax.Array]:
+    @jax.jit
+    def op(state_tensor):
+        nl = np.arange(BOSON_TRUNC)
+        nf = np.arange(2)
+        diag_fn = np.sqrt((nl[None, :, None] + 1 + nf[None, None, :])
+                          / (nl[None, :, None] + 1 + nf[:, None, None]))
+        diag_fn = diag_fn[None, :, None, :, :, None]
+        zop = np.array([1., -1.])
+        result = jnp.zeros_like(state_tensor)
+        for site in range(num_sites - 1):
+            # xD
+            extra_dims = tuple(range(3 * (num_sites - site - 2)))
+            extra_dims += tuple(range(3 * (num_sites - site), 3 * num_sites))
+            term = state_tensor * jnp.expand_dims(diag_fn * interaction_x, extra_dims)
+            # Zo(r)
+            extra_dims = tuple(range(3 * (num_sites - site - 1) + 1))
+            extra_dims += tuple(range(3 * (num_sites - site - 1) + 2, 3 * num_sites))
+            term *= jnp.expand_dims(zop, extra_dims)
+            # Γ†(r+1)^{no(r+1)}
+            boson_dim = 3 * (num_sites - site - 2)
+            fermion_dim = boson_dim + 1
+            term = jnp.moveaxis(term, (boson_dim, fermion_dim), (0, 1))
+            term = term.at[1:, 1].set(term[:-1, 1])
+            term = term.at[0, 1].set(0.)
+            term = jnp.moveaxis(term, (0, 1), (boson_dim, fermion_dim))
+            # Γ†(r)^{1 - no(r)}
+            boson_dim = 3 * (num_sites - site - 1)
+            fermion_dim = boson_dim + 1
+            term = jnp.moveaxis(term, (boson_dim, fermion_dim), (0, 1))
+            term = term.at[1:, 0].set(term[:-1, 0])
+            term = term.at[0, 0].set(0.)
+            term = jnp.moveaxis(term, (0, 1), (boson_dim, fermion_dim))
+            # sigma-_i(r+1) (=|1><0|)
+            slices = (slice(None),) * (3 * (num_sites - site - 2) + 2)
+            term = term.at[slices + (1,)].set(term[slices + (0,)])
+            term = term.at[slices + (0,)].set(0.)
+            # sigma+_i(r)
+            slices = (slice(None),) * (3 * (num_sites - site - 1) + 2)
+            term = term.at[slices + (0,)].set(term[slices + (1,)])
+            term = term.at[slices + (1,)].set(0.)
+            # append
+            result += term
+
+            # xZo(r)
+            extra_dims = tuple(range(3 * (num_sites - site - 1) + 1))
+            extra_dims += tuple(range(3 * (num_sites - site - 1) + 2, 3 * num_sites))
+            term = state_tensor * jnp.expand_dims(zop * interaction_x, extra_dims)
+            # sigma-_i(r)
+            slices = (slice(None),) * (3 * (num_sites - site - 1) + 2)
+            term = term.at[slices + (1,)].set(term[slices + (0,)])
+            term = term.at[slices + (0,)].set(0.)
+            # sigma+_i(r+1)
+            slices = (slice(None),) * (3 * (num_sites - site - 2) + 2)
+            term = term.at[slices + (0,)].set(term[slices + (1,)])
+            term = term.at[slices + (1,)].set(0.)
+            # Γ(r)^{1 - no(r)}
+            boson_dim = 3 * (num_sites - site - 1)
+            fermion_dim = boson_dim + 1
+            term = jnp.moveaxis(term, (boson_dim, fermion_dim), (0, 1))
+            term = term.at[:-1, 0].set(term[1:, 0])
+            term = term.at[-1, 0].set(0.)
+            term = jnp.moveaxis(term, (0, 1), (boson_dim, fermion_dim))
+            # Γ(r+1)^{no(r+1)}
+            boson_dim = 3 * (num_sites - site - 2)
+            fermion_dim = boson_dim + 1
+            term = jnp.moveaxis(term, (boson_dim, fermion_dim), (0, 1))
+            term = term.at[:-1, 1].set(term[1:, 1])
+            term = term.at[-1, 1].set(0.)
+            term = jnp.moveaxis(term, (0, 1), (boson_dim, fermion_dim))
+            # D
+            extra_dims = tuple(range(3 * (num_sites - site - 2)))
+            extra_dims += tuple(range(3 * (num_sites - site), 3 * num_sites))
+            term *= jnp.expand_dims(diag_fn, extra_dims)
+            # append
+            result += term
+
+        return result
+
+    return op
+
+
+def hopping2_hamiltonian_op(
+    num_sites: int,
+    interaction_x: float
+) -> Callable[[jax.Array], jax.Array]:
+    @jax.jit
+    def op(state_tensor):
+        nl = np.arange(BOSON_TRUNC)
+        nf = np.arange(2)
+        diag_fn = np.sqrt((nl[:, None, None] + 1 + nf[None, :, None])
+                          / (nl[:, None, None] + 1 + nf[None, None, :]))
+        diag_fn = diag_fn[:, None, :, None, None, :]
+        zop = np.array([1., -1.])
+        result = jnp.zeros_like(state_tensor)
+        for site in range(num_sites - 1):
+            # xD
+            extra_dims = tuple(range(3 * (num_sites - site - 2)))
+            extra_dims += tuple(range(3 * (num_sites - site), 3 * num_sites))
+            term = state_tensor * jnp.expand_dims(diag_fn * interaction_x, extra_dims)
+            # Zi(r+1)
+            extra_dims = tuple(range(3 * (num_sites - site - 2) + 2))
+            extra_dims += tuple(range(3 * (num_sites - site - 2) + 3, 3 * num_sites))
+            term *= jnp.expand_dims(zop, extra_dims)
+            # Γ†(r+1)^{1-ni(r+1)}
+            boson_dim = 3 * (num_sites - site - 2)
+            fermion_dim = boson_dim + 2
+            term = jnp.moveaxis(term, (boson_dim, fermion_dim), (0, 1))
+            term = term.at[1:, 0].set(term[:-1, 0])
+            term = term.at[0, 0].set(0.)
+            term = jnp.moveaxis(term, (0, 1), (boson_dim, fermion_dim))
+            # Γ†(r)^{ni(r)}
+            boson_dim = 3 * (num_sites - site - 1)
+            fermion_dim = boson_dim + 2
+            term = jnp.moveaxis(term, (boson_dim, fermion_dim), (0, 1))
+            term = term.at[1:, 1].set(term[:-1, 1])
+            term = term.at[0, 1].set(0.)
+            term = jnp.moveaxis(term, (0, 1), (boson_dim, fermion_dim))
+            # sigma+_o(r+1) (=|0><1|)
+            slices = (slice(None),) * (3 * (num_sites - site - 2) + 1)
+            term = term.at[slices + (0,)].set(term[slices + (1,)])
+            term = term.at[slices + (1,)].set(0.)
+            # sigma-_o(r)
+            slices = (slice(None),) * (3 * (num_sites - site - 1) + 1)
+            term = term.at[slices + (1,)].set(term[slices + (0,)])
+            term = term.at[slices + (0,)].set(0.)
+            # append
+            result += term
+
+            # xZi(r+1)
+            extra_dims = tuple(range(3 * (num_sites - site - 2) + 2))
+            extra_dims += tuple(range(3 * (num_sites - site - 2) + 3, 3 * num_sites))
+            term = state_tensor * jnp.expand_dims(zop * interaction_x, extra_dims)
+            # sigma+_o(r)
+            slices = (slice(None),) * (3 * (num_sites - site - 1) + 1)
+            term = term.at[slices + (0,)].set(term[slices + (1,)])
+            term = term.at[slices + (1,)].set(0.)
+            # sigma-_o(r+1)
+            slices = (slice(None),) * (3 * (num_sites - site - 2) + 1)
+            term = term.at[slices + (1,)].set(term[slices + (0,)])
+            term = term.at[slices + (0,)].set(0.)
+            # Γ(r)^{ni(r)}
+            boson_dim = 3 * (num_sites - site - 1)
+            fermion_dim = boson_dim + 2
+            term = jnp.moveaxis(term, (boson_dim, fermion_dim), (0, 1))
+            term = term.at[:-1, 1].set(term[1:, 1])
+            term = term.at[-1, 1].set(0.)
+            term = jnp.moveaxis(term, (0, 1), (boson_dim, fermion_dim))
+            # Γ(r+1)^{1-ni(r+1)}
+            boson_dim = 3 * (num_sites - site - 2)
+            fermion_dim = boson_dim + 2
+            term = jnp.moveaxis(term, (boson_dim, fermion_dim), (0, 1))
+            term = term.at[:-1, 0].set(term[1:, 0])
+            term = term.at[-1, 0].set(0.)
+            term = jnp.moveaxis(term, (0, 1), (boson_dim, fermion_dim))
+            # D
+            extra_dims = tuple(range(3 * (num_sites - site - 2)))
+            extra_dims += tuple(range(3 * (num_sites - site), 3 * num_sites))
+            term *= jnp.expand_dims(diag_fn, extra_dims)
+            # append
+            result += term
+
+        return result
+
+    return op
+
+
 def hamiltonian(
     num_sites: int,
     mass_mu: Number,
@@ -312,6 +521,28 @@ def _hamiltonian(num_sites, mass_mu, interaction_x, max_left_flux, max_right_flu
 
 
 _hamiltonian_jit = jax.jit(partial(_hamiltonian, npmod=jnp), static_argnums=[0, 3, 4])
+
+
+def hamiltonian_op(
+    num_sites: int,
+    mass_mu: float,
+    interaction_x: float
+) -> Callable[[jax.Array], jax.Array]:
+    mass = mass_hamiltonian_op(num_sites, mass_mu)
+    electric = electric_hamiltonian_op(num_sites)
+    hopping1 = hopping1_hamiltonian_op(num_sites, interaction_x)
+    hopping2 = hopping2_hamiltonian_op(num_sites, interaction_x)
+
+    @jax.jit
+    def op(state):
+        state_tensor = state.reshape((3, 2, 2) * num_sites)
+        result = mass(state_tensor)
+        result += electric(state_tensor)
+        result += hopping1(state_tensor)
+        result += hopping2(state_tensor)
+        return result.reshape(-1)
+
+    return op
 
 
 def nl_bounds(

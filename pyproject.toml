@@ -17,6 +17,7 @@ classifiers = [
 dependencies = [
     "numpy",
     "scipy",
-    "jax",
-    "qiskit"
+    "jax[cuda12]",
+    "qiskit",
+    "matplotlib"
 ]
