@@ -1,5 +1,8 @@
+bool fEmulator=true;
+bool fUpdateFigure=true;
 TLegend *tl;
 TText *ttx;
+TText *txP;
 TF1 *f1;
 double dt=1.25;
 TCanvas *c0;
@@ -24,6 +27,10 @@ const int nStep=6;
 TH1D *hSim[nObs];
 TH1D *hRaw[nObs];
 TH1D *hPost[nObs];
+
+TH1D *hDiff[3];
+TH1D *hDiff_Sigma[3];
+TH1D *hDiff_Ratio[3];
 
 double vRaw[nObs][nStep+1];
 double eRaw[nObs][nStep+1];
@@ -120,6 +127,8 @@ int plot_for_paper_H2_quantinuum(void){
     grDiscard->SetPointEXlow(i, 0.0);
   }
   grDiscard->Draw("sameP");
+  if(fEmulator) txP->Draw();
+  if(fUpdateFigure) c0->SaveAs("../PDF/Nsite4_DiscardRate.pdf");
   c0->Print(Form("%s", PDFName.c_str()), "pdf");
   
   cout << "Discard rate: " << endl;
@@ -144,6 +153,7 @@ int plot_for_paper_H2_quantinuum(void){
   for(int j=0;j<5;j++){
     grPdep1[j]->Draw("sameEP");
   }
+  if(fEmulator) txP->Draw();
   c0->Print(Form("%s", PDFName.c_str()), "pdf");
 
   hFrame->Draw();
@@ -153,8 +163,10 @@ int plot_for_paper_H2_quantinuum(void){
   tl->SetTextSize(0.045);
   grPdep1[3]->Draw("sameEP");
   tl->Draw();
+  if(fEmulator) txP->Draw();
+  if(fUpdateFigure) c0->SaveAs("../PDF/Nsite4_NoiseProb_method1.pdf");
   c0->Print(Form("%s", PDFName.c_str()), "pdf");
-
+  
   hFrame->Draw();
   tl = new TLegend(0.58-0.38, 0.68+0.02, 0.92-0.48, 0.92-0.03);
   for(int j=0;j<3;j++){
@@ -164,6 +176,8 @@ int plot_for_paper_H2_quantinuum(void){
     tl->SetTextSize(0.045);
   }
   tl->Draw();
+  if(fEmulator) txP->Draw();
+  if(fUpdateFigure) c0->SaveAs("../PDF/Nsite4_NoiseProb_method2.pdf");
   c0->Print(Form("%s", PDFName.c_str()), "pdf");
 
   hFrame->Draw();
@@ -175,6 +189,8 @@ int plot_for_paper_H2_quantinuum(void){
     tl->SetTextSize(0.045);
   }
   tl->Draw();
+  if(fEmulator) txP->Draw();
+  if(fUpdateFigure) c0->SaveAs("../PDF/Nsite4_NoiseProb_method3.pdf");
   c0->Print(Form("%s", PDFName.c_str()), "pdf");
 
   cout << "hoge" << endl;
@@ -191,6 +207,7 @@ int plot_for_paper_H2_quantinuum(void){
 
       grQnx_dep2[j]->SetPoint(iStep, dt*(iStep+1), vQnx_dep2[j][iStep]);
       grQnx_dep2[j]->SetPointError(iStep, 0.0, eQnx_dep2[j][iStep]);
+      cout << "Diff dep2 (" << j << ", " << iStep << "): " << vQnx_dep2[j][iStep] << " / " << vObs << endl;
     }// for j
 
     for(int j=0;j<nObs;j++){
@@ -205,8 +222,9 @@ int plot_for_paper_H2_quantinuum(void){
 
       grQnx_dep2_fit[j]->SetPoint(iStep, dt*(iStep+1), vQnx_dep2_fit[j][iStep]);
       grQnx_dep2_fit[j]->SetPointError(iStep, 0.0, eQnx_dep2_fit[j][iStep]);
+      cout << "Diff dep2 fit (" << j << ", " << iStep << "): " << vQnx_dep2_fit[j][iStep] << " / " << vObs << endl;
     }// for j
-
+    
     for(int j=0;j<nObs;j++){
       double vObs = vRaw[j][iStep+1];
       double eObs = eRaw[j][iStep+1];
@@ -231,9 +249,95 @@ int plot_for_paper_H2_quantinuum(void){
 	grQnx_dep3_fit[j]->SetPointError(iStep, 0.0, eQnx_dep3_fit[j][iStep]);
 	
       }
+      cout << "Diff dep3 (" << j << ", " << iStep << "): " << vQnx_dep3[j][iStep] << " / " << vObs << endl;
+      
     }// for j
     
   }// for iStep
+
+  for(int i=0;i<3;i++){
+    //hDiff[i] = new TH1D(Form("hDiff_%d", i), ";Difference to noiseless simulator;Entry", 25, -1.2, 1.2);
+    hDiff[i] = new TH1D(Form("hDiff_%d", i), ";#LT#it{O}#GT_{ideal} #minus #LT#it{O}#GT_{mit};Entry", 25, -1.25, 1.25);
+    hDiff_Sigma[i] = new TH1D(Form("hDiff_Sigma_%d", i), ";Significance (#LT#it{O}#GT_{ideal} #minus #LT#it{O}#GT_{mit})/#delta#LT#it{O}#GT_{mit};Entry", 21, -5.25, 5.25);
+    hDiff_Ratio[i] = new TH1D(Form("hDiff_Ratio_%d", i), ";Ratio to Difference to noiseless simulator;Entry", 40, -2.0, 2.0);
+  }
+  for(int j=0;j<3;j++){
+    for(int iStep=0;iStep<nStep;iStep++){
+      cout << " link-" << j << ", step=" << iStep+1 << ", sim = " << vSim[j][iStep+1] << endl;
+      cout << Form("  dep1: %.3f   , diff = %.3f, ratio = %.3f, sigma = %.3f",
+		   vQnx_dep1[j][iStep+1], vSim[j][iStep+1] - vQnx_dep1[j][iStep+1], (vSim[j][iStep+1] - vQnx_dep1[j][iStep+1])/vSim[j][iStep+1], (vSim[j][iStep+1] - vQnx_dep1[j][iStep+1])/eQnx_dep1[j][iStep+1]) << endl;
+      cout << Form("  dep2: %.3f   , diff = %.3f, ratio = %.3f, sigma = %.3f",
+		   vQnx_dep2[j][iStep], vSim[j][iStep+1] - vQnx_dep2[j][iStep], (vSim[j][iStep+1] - vQnx_dep2[j][iStep])/vSim[j][iStep+1], (vSim[j][iStep+1] - vQnx_dep2[j][iStep])/eQnx_dep2[j][iStep]) << endl;
+      cout << Form("  dep3: %.3f   , diff = %.3f, ratio = %.3f, sigma = %.3f",
+		   vQnx_dep3_fit[j][iStep], vSim[j][iStep+1] - vQnx_dep3_fit[j][iStep], (vSim[j][iStep+1] - vQnx_dep3_fit[j][iStep])/vSim[j][iStep+1], (vSim[j][iStep+1] - vQnx_dep3_fit[j][iStep])/eQnx_dep3_fit[j][iStep]) << endl;
+
+      hDiff[0]->Fill(vSim[j][iStep+1] - vQnx_dep1[j][iStep+1]);
+      hDiff[1]->Fill(vSim[j][iStep+1] - vQnx_dep2[j][iStep]);
+      hDiff[2]->Fill(vSim[j][iStep+1] - vQnx_dep3_fit[j][iStep]);
+
+      hDiff_Sigma[0]->Fill((vSim[j][iStep+1] - vQnx_dep1[j][iStep+1])/eQnx_dep1[j][iStep+1]);
+      hDiff_Sigma[1]->Fill((vSim[j][iStep+1] - vQnx_dep2[j][iStep])/eQnx_dep2[j][iStep]);
+      hDiff_Sigma[2]->Fill((vSim[j][iStep+1] - vQnx_dep3_fit[j][iStep])/eQnx_dep3_fit[j][iStep]);
+      
+      hDiff_Ratio[0]->Fill((vSim[j][iStep+1] - vQnx_dep1[j][iStep+1])/vSim[j][iStep+1]);
+      hDiff_Ratio[1]->Fill((vSim[j][iStep+1] - vQnx_dep2[j][iStep])/vSim[j][iStep+1]);
+      hDiff_Ratio[2]->Fill((vSim[j][iStep+1] - vQnx_dep3_fit[j][iStep])/vSim[j][iStep+1]);
+    }// for iStep
+  }// for j
+
+  tl = new TLegend(0.58-0.38, 0.68+0.02, 0.92-0.48, 0.92-0.03);
+  tl->SetBorderSize(0);
+  tl->SetTextSize(0.045);
+  hDiff[0]->SetLineColor(kBlue);
+  hDiff[0]->SetFillColorAlpha(kBlue, 0.35);
+  hDiff[1]->SetLineColor(kRed);
+  hDiff[1]->SetFillColorAlpha(kRed, 0.35);
+  hDiff[2]->SetLineColor(kGreen+1);
+  hDiff[2]->SetFillColorAlpha(kGreen+1, 0.35);
+  hDiff_Sigma[0]->SetLineColor(kBlue);
+  hDiff_Sigma[0]->SetFillColorAlpha(kBlue, 0.35);
+  hDiff_Sigma[1]->SetLineColor(kRed);
+  hDiff_Sigma[1]->SetFillColorAlpha(kRed, 0.35);
+  hDiff_Sigma[2]->SetLineColor(kGreen+1);
+  hDiff_Sigma[2]->SetFillColorAlpha(kGreen+1, 0.35);
+  hDiff_Ratio[0]->SetLineColor(kBlue);
+  hDiff_Ratio[1]->SetLineColor(kRed);
+  hDiff_Ratio[2]->SetLineColor(kGreen);
+
+  tl->AddEntry(hDiff[0], "Method 1", "f");
+  tl->AddEntry(hDiff[1], "Method 2", "f");
+  tl->AddEntry(hDiff[2], "Method 3", "f");
+  hDiff[0]->Draw();
+  hDiff[1]->Draw("same");
+  hDiff[2]->Draw("same");
+  tl->Draw();
+  if(fEmulator) txP->Draw();
+  if(fUpdateFigure) c0->SaveAs("../PDF/Nsite4_Comp_NoiseProb.pdf");
+  c0->Print(Form("%s", PDFName.c_str()), "pdf");
+  //delete tl; tl=NULL;
+
+  hDiff_Sigma[0]->GetXaxis()->SetNdivisions(415);
+  hDiff_Sigma[0]->AddBinContent(1,  hDiff_Sigma[0]->GetBinContent(0));
+  hDiff_Sigma[0]->AddBinContent(21, hDiff_Sigma[0]->GetBinContent(22));
+  hDiff_Sigma[1]->AddBinContent(1,  hDiff_Sigma[1]->GetBinContent(0));
+  hDiff_Sigma[1]->AddBinContent(21, hDiff_Sigma[1]->GetBinContent(22));
+  hDiff_Sigma[2]->AddBinContent(1,  hDiff_Sigma[2]->GetBinContent(0));
+  hDiff_Sigma[2]->AddBinContent(21, hDiff_Sigma[2]->GetBinContent(22));
+  
+  hDiff_Sigma[0]->Draw();
+  hDiff_Sigma[1]->Draw("same");
+  hDiff_Sigma[2]->Draw("same");
+  tl->Draw();
+  if(fEmulator) txP->Draw();
+  if(fUpdateFigure) c0->SaveAs("../PDF/Nsite4_Comp_NoiseProbSig.pdf");
+  c0->Print(Form("%s", PDFName.c_str()), "pdf");
+  delete tl; tl=NULL;
+  
+  hDiff_Ratio[0]->Draw();
+  hDiff_Ratio[1]->Draw("same");
+  hDiff_Ratio[2]->Draw("same");
+  if(fEmulator) txP->Draw();
+  c0->Print(Form("%s", PDFName.c_str()), "pdf");
   
   for(int j=0;j<4;j++){
     cout << "j = " << j << endl;
@@ -253,7 +357,7 @@ int plot_for_paper_H2_quantinuum(void){
     tl->SetBorderSize(0);
     tl->SetTextSize(0.03);
 
-    ttx = new TText(0.85, 0.965, Form("link %d", j));
+    ttx = new TText(0.85, 0.965, Form("link-%d", j));
     ttx->SetNDC();
     ttx->SetTextSize(0.040);
     ttx->Draw();
@@ -270,11 +374,82 @@ int plot_for_paper_H2_quantinuum(void){
     grPost[j]->Draw("sameEP");
 
     
+    if(fEmulator) txP->Draw();
     c0->Print(Form("%s", PDFName.c_str()), "pdf");
     delete ttx; ttx=NULL;
     delete tl; tl=NULL;
   }
 
+  for(int j=0;j<3;j++){
+    cout << "j = " << j << endl;
+    delete hFrame; hFrame=NULL;
+    hFrame = new TH2D("hFrame", ";Time;Electric Energy Density", 50, -0.05, 7.55, 50, 0.0, 2.0);
+    hFrame->GetYaxis()->SetNdivisions(408);
+    hFrame->GetXaxis()->SetNdivisions(416);
+    hFrame->Draw();
+    grQnx_dep2[j]->SetMarkerStyle(21);
+    grQnx_dep2[j]->SetMarkerColor(kBlue);
+    grQnx_dep2[j]->SetLineColor(kBlue);    
+    tl = new TLegend(0.58-0.35, 0.68, 0.92-0.45, 0.92);
+    tl->AddEntry(grSim[j]  , "Noiseless", "l");
+    tl->AddEntry(grRaw[j], "Raw", "P");
+    tl->AddEntry(grQnx_dep2[j], "EM Depolarizing", "P");
+    tl->AddEntry(grPost[j], "EM Post-selection", "P");
+    tl->SetBorderSize(0);
+    tl->SetTextSize(0.04);
+
+    ttx = new TText(0.85, 0.965, Form("link-%d", j));
+    ttx->SetNDC();
+    ttx->SetTextSize(0.040);
+    ttx->Draw();
+
+    tl->Draw();
+
+    grSim[j]->SetLineWidth(2);
+    grSim[j]->Draw("sameEL");
+    grRaw[j]->Draw("sameEP");
+    grQnx_dep2[j]->Draw("sameEP");
+    grPost[j]->Draw("sameEP");
+    
+    if(fEmulator) txP->Draw();
+    if(fUpdateFigure) c0->SaveAs(Form("../PDF/Nsite4_Obs_site%d.pdf", j));
+    c0->Print(Form("%s", PDFName.c_str()), "pdf");
+    delete ttx; ttx=NULL;
+    delete tl; tl=NULL;
+  }
+  
+  delete hFrame; hFrame=NULL;
+  hFrame = new TH2D("hFrame", ";Time;Electric Energy Density", 50, -0.05, 7.55, 50, 0.0, 1.0);
+  hFrame->GetYaxis()->SetNdivisions(408);
+  hFrame->GetXaxis()->SetNdivisions(416);
+  hFrame->Draw();
+  hFrame->Draw();
+  tl = new TLegend(0.58-0.38, 0.68-0.45, 0.92-0.35, 0.92-0.5);
+  tl->AddEntry(grSim[3]  , "Noiseless", "l");
+  tl->AddEntry(grRaw[3], "Raw", "P");
+  tl->AddEntry(grQnx_dep1[3], "EM Depolarizing (global)", "P");
+  tl->SetBorderSize(0);
+  tl->SetTextSize(0.045);
+
+  ttx = new TText(0.85, 0.965, Form("link-3"));
+  ttx->SetNDC();
+  ttx->SetTextSize(0.04);
+  ttx->Draw();
+
+  tl->Draw();
+
+  grSim[3]->SetLineWidth(2);
+  grSim[3]->Draw("sameEL");
+  grRaw[3]->Draw("sameEP");
+  grQnx_dep1[3]->Draw("sameEP");
+    
+  if(fEmulator) txP->Draw();
+  if(fUpdateFigure) c0->SaveAs("../PDF/Nsite4_Calib_method1.pdf");
+  c0->Print(Form("%s", PDFName.c_str()), "pdf");
+  delete ttx; ttx=NULL;
+  delete tl; tl=NULL;
+  
+  
   for(int j=0;j<4;j++){
     cout << "j = " << j << endl;
     delete hFrame; hFrame=NULL;
@@ -289,7 +464,7 @@ int plot_for_paper_H2_quantinuum(void){
     tl->SetTextSize(0.045);
     //tl->SetTextSize(0.04);
 
-    ttx = new TText(0.85, 0.965, Form("link %d", j));
+    ttx = new TText(0.85, 0.965, Form("link-%d", j));
     ttx->SetNDC();
     ttx->SetTextSize(0.040);
     ttx->Draw();
@@ -299,6 +474,7 @@ int plot_for_paper_H2_quantinuum(void){
     grSim[j]->SetLineWidth(2);
     grSim[j]->Draw("sameEL");
     grRaw[j]->Draw("sameEP");
+    if(fEmulator) txP->Draw();
     c0->Print(Form("%s", PDFName.c_str()), "pdf");
     delete ttx; ttx=NULL;
     delete tl; tl=NULL;
@@ -353,6 +529,11 @@ int InitSetup(void){
 
   gStyle->SetErrorX(0.0001);
   gStyle->SetEndErrorSize(0.);
+
+  txP = new TText(0.18, 0.965, "Emulator results");
+  txP->SetNDC();
+  txP->SetTextSize(0.040);
+  txP->SetTextColor(kRed);
 
   c0 = new TCanvas("c0", "c0", 800, 600);
   hAll  = new TH1D("hAll", "", nStep+1, -0.5, nStep+0.5);
@@ -412,7 +593,7 @@ int InitSetup(void){
     grPost[i]->SetMarkerStyle(22);
 
     grQnx_dep1[i] = new TGraphErrors();
-    grQnx_dep1[i]->SetMarkerStyle(21);
+    grQnx_dep1[i]->SetMarkerStyle(8);
     grQnx_dep1[i]->SetMarkerColor(kBlue);
     grQnx_dep1[i]->SetLineColor(kBlue);
 
@@ -514,6 +695,7 @@ int LoadMainResults(void){
 
       grQnx_dep1[j]->SetPoint(iStep, dt*iStep, vQnx_dep1[j][iStep]);
       grQnx_dep1[j]->SetPointError(iStep, 0.0, eQnx_dep1[j][iStep]);
+      cout << "Diff dep1 (" << j << ", " << iStep << "): " << vQnx_dep1[j][iStep] << " / " << vObs << endl;
     }
     //cout << iStep << " trotter step: ";
     //cout << 100.0*(1.0 - hCond1[0]->GetEntries()/hCond0[0]->GetEntries()) << ", ";
