@@ -92,7 +92,7 @@ const string Tag="sf1";
 //const string Tag="old";
 //const string Tag="precomp";
 //const string Tag="test";
-const string PDFName=Form("../PDF/PaperPlot_H2Emu_TrotterEM_%s.pdf", Tag.c_str());
+const string PDFName=Form("../PDF/plot_H2Emu_TrotterEM_%s.pdf", Tag.c_str());
 //const string PDFName=Form("PaperPlot_H2_%s.pdf", Tag.c_str());
 //const string PDFName=Form("PaperPlot_H1_%s.pdf", Tag.c_str());
 int InitSetup(void);

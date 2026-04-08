@@ -1,0 +1,82 @@
+[
+  {
+    "tmax": 0.2,
+    "nstep": 1,
+    "execute_job_id": "eb6b21f7-8461-4f21-94f2-ca3108e5c7e0",
+    "execute_job_name": "execution-initfull-1step-2026_04_08-12-32-00",
+    "circuit_name": "test-initfull-1step-2026_04_08-12-32-00",
+    "shots": 1000
+  },
+  {
+    "tmax": 0.2,
+    "nstep": 2,
+    "execute_job_id": "a294941c-6fe7-4d1f-9c13-9e34895b3f3c",
+    "execute_job_name": "execution-initfull-2step-2026_04_08-12-32-07",
+    "circuit_name": "test-initfull-2step-2026_04_08-12-32-07",
+    "shots": 1000
+  },
+  {
+    "tmax": 0.4,
+    "nstep": 1,
+    "execute_job_id": "e8f982f3-4280-412e-bc7d-c18eaa7fbb1d",
+    "execute_job_name": "execution-initfull-1step-2026_04_08-12-32-20",
+    "circuit_name": "test-initfull-1step-2026_04_08-12-32-20",
+    "shots": 1000
+  },
+  {
+    "tmax": 0.4,
+    "nstep": 2,
+    "execute_job_id": "18ac4eb0-dea8-4d61-8fe2-274777e4c988",
+    "execute_job_name": "execution-initfull-2step-2026_04_08-12-32-27",
+    "circuit_name": "test-initfull-2step-2026_04_08-12-32-27",
+    "shots": 1000
+  },
+  {
+    "tmax": 0.6,
+    "nstep": 1,
+    "execute_job_id": "ec47e81e-d7c4-41e3-b165-21e478472149",
+    "execute_job_name": "execution-initfull-1step-2026_04_08-12-32-40",
+    "circuit_name": "test-initfull-1step-2026_04_08-12-32-40",
+    "shots": 1000
+  },
+  {
+    "tmax": 0.6,
+    "nstep": 2,
+    "execute_job_id": "7e52b0d8-33f9-40ac-913b-d219f7cc0f81",
+    "execute_job_name": "execution-initfull-2step-2026_04_08-12-32-46",
+    "circuit_name": "test-initfull-2step-2026_04_08-12-32-46",
+    "shots": 1000
+  },
+  {
+    "tmax": 0.8,
+    "nstep": 1,
+    "execute_job_id": "b47231e7-2180-46d5-a947-2aea42b52a93",
+    "execute_job_name": "execution-initfull-1step-2026_04_08-12-33-00",
+    "circuit_name": "test-initfull-1step-2026_04_08-12-33-00",
+    "shots": 1000
+  },
+  {
+    "tmax": 0.8,
+    "nstep": 2,
+    "execute_job_id": "902e0bc8-fd5c-43c7-ad5c-8242b0424f78",
+    "execute_job_name": "execution-initfull-2step-2026_04_08-12-33-07",
+    "circuit_name": "test-initfull-2step-2026_04_08-12-33-07",
+    "shots": 1000
+  },
+  {
+    "tmax": 1.0,
+    "nstep": 1,
+    "execute_job_id": "49ee8785-d12f-49b5-9020-8c9b020f039d",
+    "execute_job_name": "execution-initfull-1step-2026_04_08-12-33-20",
+    "circuit_name": "test-initfull-1step-2026_04_08-12-33-20",
+    "shots": 1000
+  },
+  {
+    "tmax": 1.0,
+    "nstep": 2,
+    "execute_job_id": "767a7f33-cd8a-47ed-b6a1-7ee21ae44063",
+    "execute_job_name": "execution-initfull-2step-2026_04_08-12-33-27",
+    "circuit_name": "test-initfull-2step-2026_04_08-12-33-27",
+    "shots": 1000
+  }
+]
