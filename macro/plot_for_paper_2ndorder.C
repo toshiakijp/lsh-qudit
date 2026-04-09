@@ -17,6 +17,8 @@ TGraphErrors *grQnx_dep3_fit[nSite+1];
 TH1D *hAll;
 TH1D *hPass;
 TH2D *hFrame;
+TH2D *hRatioFrame;
+TPad *pad1[2];
 const int nTmax = 5;
 const double TLists[nTmax] = {0.2, 0.4, 0.6, 0.8, 1.0};
 const int MyCol[4] = {EColor::kRed, EColor::kOrange, EColor::kGreen+1, EColor::kBlue};
@@ -75,6 +77,10 @@ TGraphErrors *grRaw[nStep][nObs];
 TGraphErrors *grPost[nStep][nObs];
 TGraphErrors *grPdep2[nTmax][nObs];
 TGraphErrors *grQnx_dep2[nStep][nObs];
+
+TGraphErrors *grRaw_Ratio[nStep][nObs];
+TGraphErrors *grPost_Ratio[nStep][nObs];
+TGraphErrors *grQnx_dep2_Ratio[nStep][nObs];
 
 TH1D *h1;
 ifstream ifs;
@@ -156,46 +162,116 @@ int plot_for_paper_2ndorder(void){
     delete tl; tl=NULL;
   }// for j
 
-
-
-  delete hRatioFrame; hRatioFrame=NULL;
-  hRatioFrame = new TH2D("hRatioFrame", Form(";%s;data/MC ", xTitle.c_str()), 100, MinX, MaxX, 100, 0.2, 1.8);
-
-  c0->cd();
-  if(fSMBG)
-    pad1[0] = new TPad("pad1_0", "pad1_0", 0.0, 0.35, 1.0, 1.0);
-  else
-    pad1[0] = new TPad("pad1_0", "pad1_0", 0.0, 0.0, 1.0, 1.0);
-  pad1[1] = new TPad("pad1_1", "pad1_1", 0.0, 0.0, 1.0, 0.35);
-
-  hFrame->GetXaxis()->SetNoExponent(true);
-
-  pad1[0]->SetLogy(false);
-  pad1[0]->SetLogx(false);
-  if(fSMBG){
-    hFrame->GetYaxis()->SetTitleOffset(0.6);
+  for(int j=0;j<3;j++){
+    cout << "j = " << j << endl;
+    delete hFrame; hFrame=NULL;
+    if(j==0){
+      //hFrame = new TH2D("hFrame", ";Time;Electric Energy Density", 50, -0.05, 1.05, 50, 0.0, 1.0);
+      hFrame = new TH2D("hFrame", ";;Electric Energy Density", 50, -0.05, 1.05, 50, 0.0, 1.0);
+    }else{
+      //hFrame = new TH2D("hFrame", ";Time;Electric Energy Density", 50, -0.05, 1.05, 50, 0.0, 2.2);
+      hFrame = new TH2D("hFrame", ";;Electric Energy Density", 50, -0.05, 1.05, 50, 0.0, 2.2);
+    }
+    delete hRatioFrame; hRatioFrame=NULL;
+    hRatioFrame = new TH2D("hRatioFrame", Form(";Time;Difference [%%]"), 50, -0.05, 1.05, 50, -30, 30);
+    hFrame->GetYaxis()->SetTitleOffset(0.7);
     hFrame->GetYaxis()->SetTitleSize(0.07);
     hFrame->GetYaxis()->SetLabelSize(0.07);
-    pad1[0]->SetBottomMargin(0);
+    hRatioFrame->GetXaxis()->SetLabelSize(0.15);
+    hRatioFrame->GetXaxis()->SetTitleSize(0.15);
+    hRatioFrame->GetXaxis()->SetTitleOffset(1.0);
+    hRatioFrame->GetYaxis()->SetLabelSize(0.13);
+    hRatioFrame->GetYaxis()->SetTitleSize(0.13);
+    hRatioFrame->GetYaxis()->SetTitleOffset(0.38);
+    hRatioFrame->GetYaxis()->SetNdivisions(505);
+    hRatioFrame->GetXaxis()->SetNoExponent(true);
+
+    hFrame->GetXaxis()->SetLabelSize(0);
+    c0->cd();
+    pad1[0] = new TPad("pad1_0", "pad1_0", 0.0, 0.35, 1.0, 1.0);
+    pad1[1] = new TPad("pad1_1", "pad1_1", 0.0, 0.0, 1.0, 0.35);
+    pad1[0]->SetBottomMargin(0.03);
     pad1[0]->SetLeftMargin(0.12);
     pad1[1]->SetTopMargin(0);
     pad1[1]->SetLeftMargin(0.12);
     pad1[1]->SetBottomMargin(0.35);
-  }else{
-    hFrame->GetYaxis()->SetTitleOffset(0.8);
-    hFrame->GetYaxis()->SetTitleSize(0.06);
-    hFrame->GetYaxis()->SetLabelSize(0.06);
-    pad1[0]->SetLeftMargin(0.12);
-    pad1[0]->SetRightMargin(0.05);
-  }
-  hRatioFrame->GetXaxis()->SetLabelSize(0.15);
-  hRatioFrame->GetXaxis()->SetTitleSize(0.15);
-  hRatioFrame->GetXaxis()->SetTitleOffset(1.0);
-  hRatioFrame->GetYaxis()->SetLabelSize(0.13);
-  hRatioFrame->GetYaxis()->SetTitleSize(0.13);
-  hRatioFrame->GetYaxis()->SetTitleOffset(0.3);
-  hRatioFrame->GetYaxis()->SetNdivisions(505);
-  hRatioFrame->GetXaxis()->SetNoExponent(true);
+    pad1[1]->SetGridy();
+
+    hFrame->GetYaxis()->SetNdivisions(408);
+    hFrame->GetXaxis()->SetNdivisions(208);
+    hRatioFrame->GetXaxis()->SetNdivisions(208);
+    c0->Clear();
+    pad1[0]->Draw();
+    pad1[0]->cd();
+    hFrame->Draw();
+    tl = new TLegend(0.58-0.35-0.05, 0.68+0.1-0.7, 0.92-0.35-0.15, 0.92-0.5);
+    tl->AddEntry(grTH[j],  "Theoretical calc.", "l");
+
+    for(int iStep=0;iStep<nStep;iStep++){
+      tl->AddEntry(grRaw[iStep][j],  Form("Raw"), "P");
+      tl->AddEntry(grQnx_dep2[iStep][j], Form("EM Depolarizing"), "P");
+      tl->AddEntry(grPost[iStep][j], Form("EM Post-selection"), "P");
+      //tl->AddEntry(grRaw[iStep][j],  Form("Raw (%d-step)", iStep+1), "P");
+      //tl->AddEntry(grQnx_dep2[iStep][j], Form("EM Depolarizing (%d-step)", iStep+1), "P");
+      //tl->AddEntry(grPost[iStep][j], Form("EM Post-selection (%d-step)", iStep+1), "P");
+
+      grRaw_Ratio[iStep][j]      = (TGraphErrors *)grRaw[iStep][j]->Clone();
+      grPost_Ratio[iStep][j]     = (TGraphErrors *)grPost[iStep][j]->Clone();
+      grQnx_dep2_Ratio[iStep][j] = (TGraphErrors *)grQnx_dep2[iStep][j]->Clone();
+
+      grRaw_Ratio[iStep][j]     ->Clear();
+      grPost_Ratio[iStep][j]    ->Clear();
+      grQnx_dep2_Ratio[iStep][j]->Clear();
+      for(int iT=0;iT<nTmax;iT++){
+	grRaw_Ratio[iStep][j]->SetPoint(iT, TLists[iT], 100.0*(grRaw[iStep][j]->GetPointY(iT)/grTH[j]->Eval(TLists[iT]) - 1.0));
+	grRaw_Ratio[iStep][j]->SetPointError(iT, 0.0, 100.0*(grRaw[iStep][j]->GetErrorY(iT)/grTH[j]->Eval(TLists[iT])));
+	grPost_Ratio[iStep][j]->SetPoint(iT, TLists[iT], 100.0*(grPost[iStep][j]->GetPointY(iT)/grTH[j]->Eval(TLists[iT]) - 1.0));
+	grPost_Ratio[iStep][j]->SetPointError(iT, 0.0, 100.0*(grPost[iStep][j]->GetErrorY(iT)/grTH[j]->Eval(TLists[iT])));
+	grQnx_dep2_Ratio[iStep][j]->SetPoint(iT, TLists[iT], 100.0*(grQnx_dep2[iStep][j]->GetPointY(iT)/grTH[j]->Eval(TLists[iT]) - 1.0));
+	grQnx_dep2_Ratio[iStep][j]->SetPointError(iT, 0.0, 100.0*(grQnx_dep2[iStep][j]->GetErrorY(iT)/grTH[j]->Eval(TLists[iT])));
+
+      }// for iT
+
+      for(int iT=0;iT<nTmax;iT++) cout << Form("Raw   (%.1f): %.1f", TLists[iT], 100.0*(grRaw[iStep][j]->GetPointY(iT)/grTH[j]->Eval(TLists[iT]) - 1.0)) << endl;
+      for(int iT=0;iT<nTmax;iT++) cout << Form("Dep   (%.1f): %.1f", TLists[iT], 100.0*(grQnx_dep2[iStep][j]->GetPointY(iT)/grTH[j]->Eval(TLists[iT]) - 1.0)) << endl;
+      for(int iT=0;iT<nTmax;iT++) cout << Form("Post  (%.1f): %.1f", TLists[iT], 100.0*(grPost[iStep][j]->GetPointY(iT)/grTH[j]->Eval(TLists[iT]) - 1.0)) << endl;
+    }
+
+    tl->SetBorderSize(0);
+    tl->SetTextSize(0.05);
+
+    ttx = new TLatex(0.85, 0.965, Form("link %d", j));
+    ttx->SetNDC();
+    ttx->SetTextSize(0.05);
+    ttx->Draw();
+
+    tl->Draw();
+
+    grTH[j]->Draw("same");
+    for(int iStep=0;iStep<nStep;iStep++){
+      grRaw[iStep][j]->Draw("sameP");
+      grQnx_dep2[iStep][j]->Draw("sameP");
+      grPost[iStep][j]->Draw("sameP");
+    }
+    
+    if(fEmulator) txP->Draw();
+
+    c0->cd();
+    pad1[1]->SetFillColorAlpha(0, 0.0);
+    pad1[1]->Draw();
+    pad1[1]->cd();
+    hRatioFrame->Draw();
+    for(int iStep=0;iStep<nStep;iStep++){
+      grRaw_Ratio[iStep][j]->Draw("sameP");
+      grQnx_dep2_Ratio[iStep][j]->Draw("sameP");
+      grPost_Ratio[iStep][j]->Draw("sameP");
+    }
+
+    c0->SaveAs(Form("../PDF/Nsite4_2ndorder_link%d.pdf", j));
+    c0->Print(Form("%s", PDFName.c_str()), "pdf");
+    delete ttx; ttx=NULL;
+    delete tl; tl=NULL;
+  }// for j
 
   c0->Print(Form("%s]", PDFName.c_str()), "pdf");
     
