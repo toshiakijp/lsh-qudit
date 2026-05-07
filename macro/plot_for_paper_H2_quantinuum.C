@@ -18,7 +18,10 @@ TGraph *grQnx_post[nSite];
 TGraphAsymmErrors *grDiscard;
 TH1D *hAll;
 TH1D *hPass;
+TGraph *grRemain;
 TH2D *hFrame;
+TH2D *hRatioFrame;
+TPad *pad1[2];
 const int MyCol[4] = {EColor::kRed, EColor::kOrange, EColor::kGreen+1, EColor::kBlue};
 
 const int nObs=5;
@@ -46,6 +49,9 @@ double eQnx_dep3[nObs][nStep+1];
 double vQnx_dep3_fit[nObs][nStep+1];
 double eQnx_dep3_fit[nObs][nStep+1];
 double vDiscard[nStep+1];
+TGraphErrors *grRaw_Ratio[nObs];
+TGraphErrors *grPost_Ratio[nObs];
+TGraphErrors *grQnx_dep2_Ratio[nObs];
 
 //double vSim[5][nStep+1];
 const double vSim[nObs][6+1]={{0.75, 0.058365000000000014, 0.4886174999999999, 0.4945875000000001, 0.3296774999999999, 0.3161175000000001, 0.37761749999999983},
@@ -94,9 +100,13 @@ const string Tag="initfull_sf1";
 //const string Tag="old";
 //const string Tag="precomp";
 //const string Tag="test";
-const string PDFName=Form("../PDF/PaperPlot_H2_%s_test.pdf", Tag.c_str());
-//const string PDFName=Form("PaperPlot_H2_%s.pdf", Tag.c_str());
-//const string PDFName=Form("PaperPlot_H1_%s.pdf", Tag.c_str());
+//const string PDFName=Form("../PDF/PaperPlot_H2_%s_zero100.pdf", Tag.c_str());
+//const string PDFName=Form("../PDF/PaperPlot_H2_%s_main100_zero100.pdf", Tag.c_str());
+//const string PDFName=Form("../PDF/PaperPlot_H2_%s_main100.pdf", Tag.c_str());
+//const string PDFName=Form("../PDF/PaperPlot_H2_%s_var.pdf", Tag.c_str());
+//const string PDFName=Form("../PDF/PaperPlot_H2_%s_zero2000.pdf", Tag.c_str());
+const string PDFName=Form("../PDF/PaperPlot_H2_%s.pdf", Tag.c_str());
+//const string PDFName=Form("../PDF/PaperPlot_H1_%s.pdf", Tag.c_str());
 int InitSetup(void);
 int LoadMainResults(void);
 int LoadZeroInit(void);
@@ -116,7 +126,6 @@ int plot_for_paper_H2_quantinuum(void){
   hFrame->GetYaxis()->SetNdivisions(408);
   hFrame->GetXaxis()->SetNdivisions(7);
   c0->Print(Form("%s[", PDFName.c_str()), "pdf");
-
   hFrame->Draw();
   grDiscard->SetMarkerStyle(8);
   grDiscard->SetMarkerSize(2.0);
@@ -130,6 +139,40 @@ int plot_for_paper_H2_quantinuum(void){
   if(fEmulator) txP->Draw();
   if(fUpdateFigure) c0->SaveAs("../PDF/Nsite4_DiscardRate.pdf");
   c0->Print(Form("%s", PDFName.c_str()), "pdf");
+
+  c0->SetRightMargin(0.05+0.05);
+  c0->SetLeftMargin(0.16-0.05);
+  hFrame->GetYaxis()->SetTitleOffset(1.0);
+  //c0->Draw();
+  //hFrame->Draw();
+  gPad->SetTicky(0);
+  gPad->Update();
+  
+  grRemain->SetMarkerStyle(33);
+  grRemain->SetMarkerSize(2.0);
+  grRemain->SetMarkerColor(kRed);
+  double rightmax=500.0;
+  double scale=1.0/rightmax;
+  double xmax = gPad->GetUxmax();
+  double ymin = gPad->GetUymin();
+  double ymax = gPad->GetUymax();
+  TGaxis *axis = new TGaxis(xmax, ymin, xmax, ymax, 0, rightmax, 510, "+L");    
+  axis->SetLineColor(kRed); 
+  axis->SetLabelColor(kRed);
+  axis->SetTitleColor(kRed);
+  axis->SetTitle("Remaining shots");
+    
+  axis->Draw();
+
+  for(int iStep=0;iStep<nStep+1;iStep++){
+    grRemain->SetPoint(iStep, iStep, grRemain->GetPointY(iStep)*scale);
+  }
+  grRemain->Draw("sameP");
+  c0->Print(Form("%s", PDFName.c_str()), "pdf");
+  
+  gPad->SetTicky(1);
+  c0->SetRightMargin(0.05);
+  c0->SetLeftMargin(0.16);
   
   cout << "Discard rate: " << endl;
   for(int i=0;i<nStep+1;i++){
@@ -385,7 +428,7 @@ int plot_for_paper_H2_quantinuum(void){
     delete hFrame; hFrame=NULL;
     hFrame = new TH2D("hFrame", ";Time;Electric Energy Density", 50, -0.05, 7.55, 50, 0.0, 2.0);
     hFrame->GetYaxis()->SetNdivisions(408);
-    hFrame->GetXaxis()->SetNdivisions(416);
+    hFrame->GetXaxis()->SetNdivisions(40408);
     hFrame->Draw();
     grQnx_dep2[j]->SetMarkerStyle(21);
     grQnx_dep2[j]->SetMarkerColor(kBlue);
@@ -417,6 +460,123 @@ int plot_for_paper_H2_quantinuum(void){
     delete ttx; ttx=NULL;
     delete tl; tl=NULL;
   }
+
+  // Ratio plot
+  for(int j=0;j<3;j++){
+    cout << "j = " << j << endl;
+    delete hFrame; hFrame=NULL;
+    hFrame = new TH2D("hFrame", ";Time;Electric Energy Density", 50, -0.05, 7.55, 50, 0.0, 2.0);
+    hFrame->GetYaxis()->SetTitleOffset(0.7);
+    hFrame->GetYaxis()->SetTitleSize(0.07);
+    hFrame->GetYaxis()->SetLabelSize(0.07);
+    hFrame->GetXaxis()->SetLabelSize(0);
+    delete hRatioFrame; hRatioFrame=NULL;
+    //hRatioFrame = new TH2D("hRatioFrame", Form(";Time;Difference [%%]"), 50, -0.05, 7.55, 50, -70, 70);
+    hRatioFrame = new TH2D("hRatioFrame", Form(";Time;Difference"), 50, -0.05, 7.55, 50, -0.5, 0.5);
+    hRatioFrame->GetXaxis()->SetLabelSize(0.15);
+    hRatioFrame->GetXaxis()->SetTitleSize(0.15);
+    hRatioFrame->GetXaxis()->SetTitleOffset(1.0);
+    hRatioFrame->GetYaxis()->SetLabelSize(0.13);
+    hRatioFrame->GetYaxis()->SetTitleSize(0.13);
+    hRatioFrame->GetYaxis()->SetTitleOffset(0.38);
+    hRatioFrame->GetYaxis()->SetNdivisions(505);
+    hRatioFrame->GetXaxis()->SetNoExponent(true);
+    c0->cd();
+    pad1[0] = new TPad("pad1_0", "pad1_0", 0.0, 0.35, 1.0, 1.0);
+    pad1[1] = new TPad("pad1_1", "pad1_1", 0.0, 0.0, 1.0, 0.35);
+    pad1[0]->SetBottomMargin(0.03);
+    pad1[0]->SetLeftMargin(0.12);
+    pad1[1]->SetTopMargin(0);
+    pad1[1]->SetLeftMargin(0.12);
+    pad1[1]->SetBottomMargin(0.35);
+    pad1[1]->SetGridy();
+
+    hFrame->GetYaxis()->SetNdivisions(408);
+    hFrame->GetXaxis()->SetNdivisions(40408);
+    hRatioFrame->GetXaxis()->SetNdivisions(40408);
+    hRatioFrame->GetXaxis()->SetTickLength(0.05);
+    c0->Clear();
+    pad1[0]->Draw();
+    pad1[0]->cd();
+    hFrame->Draw();
+
+    grQnx_dep2[j]->SetMarkerStyle(21);
+    grQnx_dep2[j]->SetMarkerColor(kBlue);
+    grQnx_dep2[j]->SetLineColor(kBlue);    
+    tl = new TLegend(0.58-0.35, 0.68, 0.92-0.45, 0.92);
+    tl->AddEntry(grSim[j]  , "Noiseless", "l");
+    tl->AddEntry(grRaw[j], "Raw", "P");
+    tl->AddEntry(grQnx_dep2[j], "EM Depolarizing", "P");
+    tl->AddEntry(grPost[j], "EM Post-selection", "P");
+    tl->SetBorderSize(0);
+    tl->SetTextSize(0.05);
+
+    grRaw_Ratio[j]      = (TGraphErrors *)grRaw[j]->Clone();
+    grPost_Ratio[j]     = (TGraphErrors *)grPost[j]->Clone();
+    grQnx_dep2_Ratio[j] = (TGraphErrors *)grQnx_dep2[j]->Clone();
+
+    grRaw_Ratio[j]     ->RemovePoint(nStep);
+    grPost_Ratio[j]    ->RemovePoint(nStep);
+    grQnx_dep2_Ratio[j]->RemovePoint(nStep);
+
+    if(false){
+      for(int iStep=0;iStep<nStep;iStep++){
+	grRaw_Ratio[j]->SetPoint(iStep, dt*(iStep+1), 100.0*(grRaw[j]->GetPointY(iStep+1)/grSim[j]->GetPointY(iStep+1) - 1.0));
+	grRaw_Ratio[j]->SetPointError(iStep, 0.0, 100.0*(grRaw[j]->GetErrorY(iStep+1)/grSim[j]->GetPointY(iStep+1)));
+	grPost_Ratio[j]->SetPoint(iStep, dt*(iStep+1), 100.0*(grPost[j]->GetPointY(iStep+1)/grSim[j]->GetPointY(iStep+1) - 1.0));
+	grPost_Ratio[j]->SetPointError(iStep, 0.0, 100.0*(grPost[j]->GetErrorY(iStep+1)/grSim[j]->GetPointY(iStep+1)));
+	grQnx_dep2_Ratio[j]->SetPoint(iStep, dt*(iStep+1), 100.0*(grQnx_dep2[j]->GetPointY(iStep)/grSim[j]->GetPointY(iStep+1) - 1.0));
+	grQnx_dep2_Ratio[j]->SetPointError(iStep, 0.0, 100.0*(grQnx_dep2[j]->GetErrorY(iStep)/grSim[j]->GetPointY(iStep+1)));
+      }// for iStep
+    }else{
+      for(int iStep=0;iStep<nStep;iStep++){
+	grRaw_Ratio[j]->SetPoint(iStep, dt*(iStep+1), grRaw[j]->GetPointY(iStep+1) - grSim[j]->GetPointY(iStep+1));
+	grRaw_Ratio[j]->SetPointError(iStep, 0.0, grRaw[j]->GetErrorY(iStep+1));
+	grPost_Ratio[j]->SetPoint(iStep, dt*(iStep+1), grPost[j]->GetPointY(iStep+1) - grSim[j]->GetPointY(iStep+1));
+	grPost_Ratio[j]->SetPointError(iStep, 0.0, grPost[j]->GetErrorY(iStep+1));
+	grQnx_dep2_Ratio[j]->SetPoint(iStep, dt*(iStep+1), grQnx_dep2[j]->GetPointY(iStep) - grSim[j]->GetPointY(iStep+1));
+	grQnx_dep2_Ratio[j]->SetPointError(iStep, 0.0, grQnx_dep2[j]->GetErrorY(iStep));
+      }// for iStep
+    }
+    
+    for(int iStep=0;iStep<nStep;iStep++) cout << Form("Raw   (%.1f): %.1f", dt*(iStep+1), 100.0*(grRaw[j]->GetPointY(iStep+1)/grSim[j]->GetPointY(iStep+1) - 1.0)) << endl;
+    for(int iStep=0;iStep<nStep;iStep++) cout << Form("Dep   (%.1f): %.1f", dt*(iStep+1), 100.0*(grQnx_dep2[j]->GetPointY(iStep+1)/grSim[j]->GetPointY(iStep+1) - 1.0)) << endl;
+    for(int iStep=0;iStep<nStep;iStep++) cout << Form("Post  (%.1f): %.1f", dt*(iStep+1), 100.0*(grPost[j]->GetPointY(iStep)/grSim[j]->GetPointY(iStep+1) - 1.0)) << endl;
+    
+    ttx = new TText(0.85, 0.965, Form("link-%d", j));
+    ttx->SetNDC();
+    ttx->SetTextSize(0.050);
+    ttx->Draw();
+
+    tl->Draw();
+
+    grSim[j]->SetLineWidth(2);
+    grSim[j]->Draw("sameEL");
+    grRaw[j]->Draw("sameEP");
+    grQnx_dep2[j]->Draw("sameEP");
+    grPost[j]->Draw("sameEP");
+    
+    if(fEmulator) txP->Draw();
+
+    c0->cd();
+    pad1[1]->SetFillColorAlpha(0, 0.0);
+    pad1[1]->Draw();
+    pad1[1]->cd();
+    hRatioFrame->Draw();
+    //grRaw_Ratio[j]->SetLineStyle(2);
+    //grQnx_dep2_Ratio[j]->SetLineStyle(2);
+    //grPost_Ratio[j]->SetLineStyle(2);
+    grRaw_Ratio[j]->Draw("sameP");
+    grQnx_dep2_Ratio[j]->Draw("sameP");
+    grPost_Ratio[j]->Draw("sameP");
+    
+    if(fUpdateFigure) c0->SaveAs(Form("../PDF/Nsite4_Obs_Ratio_site%d.pdf", j));
+    c0->Print(Form("%s", PDFName.c_str()), "pdf");
+    delete ttx; ttx=NULL;
+    delete tl; tl=NULL;
+  }
+  delete pad1[1]; pad1[1]=NULL;
+  delete pad1[0]; pad1[0]=NULL;
   
   delete hFrame; hFrame=NULL;
   hFrame = new TH2D("hFrame", ";Time;Electric Energy Density", 50, -0.05, 7.55, 50, 0.0, 1.0);
@@ -494,8 +654,8 @@ int InitSetup(void){
   gStyle->SetPaperSize(20,26);
   // set margin sizes
   gStyle->SetPadTopMargin(0.05);
-  gStyle->SetPadRightMargin(0.05);
   gStyle->SetPadBottomMargin(0.16);
+  gStyle->SetPadRightMargin(0.05);
   gStyle->SetPadLeftMargin(0.16);
 
   // set title offsets (for axis label)
@@ -540,7 +700,8 @@ int InitSetup(void){
   hPass = new TH1D("hPass", "", nStep+1, -0.5, nStep+0.5);
   f1 = new TF1("f1", "[0]*x", -0.5, 6.5);
   f1->SetNpx(1000);
-  
+
+  grRemain = new TGraph();
   for(int i=0;i<nObs;i++){
     hSim[i] = new TH1D(Form("hSim_%d", i), "", 1000, 0, 10);
     hRaw[i] = new TH1D(Form("hRaw_%d", i), "", 1000, 0, 10);
@@ -641,6 +802,8 @@ int LoadMainResults(void){
     //string filename = Form("H2-Emulator_%s_%dstep.txt", Tag.c_str(), iStep);
     //string filename = Form("H2-Emulator_%s_%dstep.txt", Tag.c_str(), iStep);
     string filename = Form("../savefiles/H2-Emulator_%s_%dstep.txt", Tag.c_str(), iStep);
+    //string filename = Form("../savefiles/H2-Emulator_%s_var_%dstep.txt", Tag.c_str(), iStep);
+    //string filename = Form("../savefiles/H2-Emulator_%s_100_0_%dstep.txt", Tag.c_str(), iStep);
     //string filename = Form("%s_%dstep.txt", Tag.c_str(), iStep);
     ifs.open(filename.c_str());
     cout << "Load File: " << filename << endl;
@@ -703,6 +866,7 @@ int LoadMainResults(void){
     //cout << 100.0*(1.0 - hCond3[0]->GetEntries()/hCond0[0]->GetEntries()) << endl;
     
     vDiscard[iStep] = 1.0 - hPost[0]->GetEntries()/hRaw[0]->GetEntries();
+    grRemain->SetPoint(iStep, iStep, hPost[0]->GetEntries());
   }// for iStep
   cout << "Discard rate: ";
   for(int i=0;i<nStep+1;i++){
@@ -740,6 +904,8 @@ int LoadZeroInit(void){
     //string filename = Form("H1-Emulator_%s_zeroinit_%dstep.txt", Tag.c_str(), iStep+1);
     //string filename = Form("H2-Emulator_%s_zeroinit_%dstep.txt", Tag.c_str(), iStep+1);
     string filename = Form("../savefiles/H2-Emulator_%s_zeroinit_%dstep.txt", Tag.c_str(), iStep+1);
+    //string filename = Form("../savefiles/H2-Emulator_%s_100_0_zeroinit_%dstep.txt", Tag.c_str(), iStep+1);
+    //string filename = Form("../savefiles/H2-Emulator_%s_var_zeroinit_%dstep.txt", Tag.c_str(), iStep+1);
     //string filename = Form("%s_%dstep.txt", Tag.c_str(), iStep);
     ifs.open(filename.c_str());
     cout << "Load File: " << filename << endl;
@@ -759,6 +925,27 @@ int LoadZeroInit(void){
     }// while
     ifs.close();
 
+    if(false){
+      filename = Form("../savefiles/H2-Emulator_%s_1000_0_zeroinit_%dstep.txt", Tag.c_str(), iStep+1);
+      //string filename = Form("%s_%dstep.txt", Tag.c_str(), iStep);
+      ifs.open(filename.c_str());
+      cout << "Load File: " << filename << endl;
+    
+      while(ifs>>N_L0>>N_L1>>N_L2>>N_Lfix>>N_R0>>N_R1>>N_R2>>N_Rfix>>anc>>counts){
+	vIn[0] = (N_L0/2.0)*(N_L0/2.0 + 1);
+	vIn[1] = (N_L1/2.0)*(N_L1/2.0 + 1);
+	vIn[2] = (N_L2/2.0)*(N_L2/2.0 + 1);
+	vIn[3] = (N_Lfix/2.0)*(N_Lfix/2.0 + 1);
+	vIn[4] = (N_Rfix/2.0)*(N_Rfix/2.0 + 1);
+      
+	for(int j=0;j<nObs;j++){
+	  for(int i=0;i<counts;i++){	  
+	    hRaw[j]->Fill(vIn[j]);
+	  } // for counts
+	}// for j
+      }// while
+      ifs.close();
+    }    
     for(int j=0;j<nObs;j++){
       vRaw[j][iStep] = hRaw[j]->GetMean();
       eRaw[j][iStep] = hRaw[j]->GetMeanError();

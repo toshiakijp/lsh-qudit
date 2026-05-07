@@ -1,0 +1,44 @@
+[
+  {
+    "n_full": 0,
+    "execute_job_id": "ec0c9591-8e5c-49eb-bef5-9dc8bb15a585",
+    "execute_job_name": "execution-initfull-zeroinit-1step-2026_04_22-14-34-33",
+    "circuit_name": "test-initfull-zeroinit-1step-2026_04_22-14-34-33",
+    "shots": 1000
+  },
+  {
+    "n_full": 1,
+    "execute_job_id": "19815a88-3c87-47db-9432-8df6d3021550",
+    "execute_job_name": "execution-initfull-zeroinit-2step-2026_04_22-14-34-45",
+    "circuit_name": "test-initfull-zeroinit-2step-2026_04_22-14-34-45",
+    "shots": 1000
+  },
+  {
+    "n_full": 2,
+    "execute_job_id": "5299c0f3-149a-4e49-a7c7-f59fb5c7afc8",
+    "execute_job_name": "execution-initfull-zeroinit-3step-2026_04_22-14-34-58",
+    "circuit_name": "test-initfull-zeroinit-3step-2026_04_22-14-34-58",
+    "shots": 1000
+  },
+  {
+    "n_full": 3,
+    "execute_job_id": "c72e6f3e-d332-492c-b296-aefdc4ff604d",
+    "execute_job_name": "execution-initfull-zeroinit-4step-2026_04_22-14-35-10",
+    "circuit_name": "test-initfull-zeroinit-4step-2026_04_22-14-35-10",
+    "shots": 1000
+  },
+  {
+    "n_full": 4,
+    "execute_job_id": "7a52bf28-b881-4188-a358-c7298043973e",
+    "execute_job_name": "execution-initfull-zeroinit-5step-2026_04_22-14-35-30",
+    "circuit_name": "test-initfull-zeroinit-5step-2026_04_22-14-35-30",
+    "shots": 1000
+  },
+  {
+    "n_full": 5,
+    "execute_job_id": "b00cccf7-6e82-4029-9652-e43f19fbd18f",
+    "execute_job_name": "execution-initfull-zeroinit-6step-2026_04_22-14-35-41",
+    "circuit_name": "test-initfull-zeroinit-6step-2026_04_22-14-35-41",
+    "shots": 1000
+  }
+]

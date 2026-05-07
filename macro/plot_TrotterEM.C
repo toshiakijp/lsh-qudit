@@ -217,11 +217,15 @@ int plot_TrotterEM(void){
 
   for(int iT=0;iT<nTmax;iT++){
     for(int j=0;j<3;j++){
-      hFrame = new TH2D("hFrame", ";time step;Electric Energy Density", 50, 0.0, TLists[iT], 50, 0.0, 3.0);
+      hFrame = new TH2D("hFrame", ";timestep;Electric Energy Density", 50, 0.0, TLists[iT], 50, 0.0, 3.0);
       //hFrame->GetYaxis()->SetNdivisions(408);
       hFrame->GetXaxis()->SetNdivisions(504);
       hFrame->Draw();
-      tl = new TLegend(0.58-0.38+0.38, 0.68+0.02, 0.92-0.48+0.38, 0.92-0.03);
+      if(iT!=0){
+	tl = new TLegend(0.58-0.38+0.38, 0.68-0.05, 0.92-0.48+0.38, 0.92-0.03);
+      }else{
+	tl = new TLegend(0.58-0.38+0.38, 0.68-0.05-0.4, 0.92-0.48+0.38, 0.92-0.03-0.4);       
+      }
       tl->SetBorderSize(0);
       tl->SetTextSize(0.045);
 
@@ -269,6 +273,11 @@ int plot_TrotterEM(void){
       if(fEmulator) txP->Draw();
       c0->Print(Form("%s", PDFName.c_str()), "pdf");
 
+      if(iT==0 && j==2)
+	c0->SaveAs("../PDF/Nsite4_TEM_1.pdf");
+      if(iT==4 && j==2)
+	c0->SaveAs("../PDF/Nsite4_TEM_2.pdf");
+      
       delete hFrame; hFrame=NULL;
     }// for j
   }// for iT
